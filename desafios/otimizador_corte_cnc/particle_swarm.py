@@ -24,11 +24,10 @@ class ParticleSwarm(LayoutDisplayMixin):
         print("Particle Swarm Optimization Initialized.")
 
     def initialize_particles(self):
-        # Initialize particle positions and velocities.
         self.particles = []
         for _ in range(self.num_particles):
             position = self.random_position()
-            velocity = [random.uniform(-1, 1) for _ in range(self.dim)]
+            velocity = [{"x": random.uniform(-1, 1), "y": random.uniform(-1, 1)} for _ in range(self.dim)]
             score = self.evaluate(position)
             self.particles.append({
                 "position": position,
@@ -37,90 +36,94 @@ class ParticleSwarm(LayoutDisplayMixin):
                 "best_position": position,
                 "best_score": score
             })
+        self.update_global_best()
         print(f"Initialized {self.num_particles} particles.")
 
     def random_position(self):
-        # Randomly initialize the position of a particle.
-        return [
-            {"x": random.uniform(0, self.sheet_width), "y": random.uniform(0, self.sheet_height)}
-            for _ in self.initial_layout
-        ]
+        return [{"x": random.uniform(0, self.sheet_width), "y": random.uniform(0, self.sheet_height)} for _ in self.initial_layout]
 
     def evaluate(self, position):
-        # Evaluation function to calculate the fitness score of a particle's position.
-        # Here, it can be a simple function like calculating how well the parts fit into the sheet.
-        # Example: Minimize wasted space
-        total_area_used = sum([part["largura"] * part["altura"] for part in position])
-        sheet_area = self.sheet_width * self.sheet_height
-        wasted_space = sheet_area - total_area_used
-        return wasted_space
+     total_area_used = 0
+
+     for i, pos in enumerate(position):
+        # Pegando o recorte correspondente
+        recorte = self.initial_layout[i]
+        x, y = pos["x"], pos["y"]
+
+        # Verifica se o recorte cabe dentro da chapa
+        if 0 <= x + recorte["x"] <= self.sheet_width and 0 <= y + recorte["y"] <= self.sheet_height:
+            total_area_used += recorte["x"] * recorte["y"]
+
+     sheet_area = self.sheet_width * self.sheet_height
+     wasted_space = sheet_area - total_area_used
+
+     return -wasted_space  # Negativo para que o algoritmo tente maximizar o uso da chapa
+
 
     def update_velocity(self, particle):
-        # Update the velocity of each particle based on personal and global best positions.
-        w = 0.5  # inertia weight
-        c1 = 1.5  # cognitive coefficient
-        c2 = 1.5  # social coefficient
+        w = 0.5  # Inércia
+        c1 = 1.5  # Componente cognitivo
+        c2 = 1.5  # Componente social
 
         for i in range(self.dim):
-            r1 = random.random()
-            r2 = random.random()
-
+            r1, r2 = random.random(), random.random()
             cognitive_velocity = c1 * r1 * (particle["best_position"][i]["x"] - particle["position"][i]["x"])
             social_velocity = c2 * r2 * (self.best_global_position[i]["x"] - particle["position"][i]["x"])
+            particle["velocity"][i]["x"] = w * particle["velocity"][i]["x"] + cognitive_velocity + social_velocity
 
-            particle["velocity"][i] = w * particle["velocity"][i] + cognitive_velocity + social_velocity
+            cognitive_velocity_y = c1 * r1 * (particle["best_position"][i]["y"] - particle["position"][i]["y"])
+            social_velocity_y = c2 * r2 * (self.best_global_position[i]["y"] - particle["position"][i]["y"])
+            particle["velocity"][i]["y"] = w * particle["velocity"][i]["y"] + cognitive_velocity_y + social_velocity_y
 
     def update_position(self, particle):
-        # Update the position of each particle using the updated velocity.
-        for i in range(self.dim):
-            particle["position"][i]["x"] += particle["velocity"][i]
+     for i in range(self.dim):
+        # Atualizando as posições
+        particle["position"][i]["x"] += particle["velocity"][i]["x"]
+        particle["position"][i]["y"] += particle["velocity"][i]["y"]
 
-            # Ensure the particle stays within the sheet boundaries
-            particle["position"][i]["x"] = max(0, min(particle["position"][i]["x"], self.sheet_width))
-            particle["position"][i]["y"] = max(0, min(particle["position"][i]["y"], self.sheet_height))
+        # Garantir que a partícula fique dentro dos limites
+        particle["position"][i]["x"] = max(0, min(particle["position"][i]["x"], self.sheet_width))
+        particle["position"][i]["y"] = max(0, min(particle["position"][i]["y"], self.sheet_height))
 
-    def get_best_solution(self):
-        # Return the best solution found.
-        return self.best_global_position, self.best_global_score
+        # Verificar se o recorte ainda cabe dentro da chapa
+        recorte = self.initial_layout[i]
+        x, y = particle["position"][i]["x"], particle["position"][i]["y"]
+
+        # Verificar se a posição do recorte ultrapassa os limites
+        if x + recorte["x"] > self.sheet_width:
+            particle["position"][i]["x"] = self.sheet_width - recorte["x"]
+        
+        if y + recorte["y"] > self.sheet_height:
+            particle["position"][i]["y"] = self.sheet_height - recorte["y"]
+
+        # Garantir que a posição não seja negativa (caso algum erro ocorra)
+        particle["position"][i]["x"] = max(0, particle["position"][i]["x"])
+        particle["position"][i]["y"] = max(0, particle["position"][i]["y"])
+
+    def update_global_best(self):
+        for particle in self.particles:
+            if particle["score"] < self.best_global_score:
+                self.best_global_position = [dict(pos) for pos in particle["position"]]
+                self.best_global_score = particle["score"]
 
     def run(self):
-        """
-        Executes the main loop of the Particle Swarm algorithm.
-        This method should return the optimized layout (JSON structure).
-        # Main PSO loop:
-        # 1. Evaluate particles.
-        # 2. Update personal and global bests.
-        # 3. Update velocities.
-        # 4. Update positions.
-        """
-        # Initialize particles
         self.initialize_particles()
-
-        # Main loop
         for iteration in range(self.num_iterations):
             for particle in self.particles:
-                # Evaluate particle
                 particle["score"] = self.evaluate(particle["position"])
-
-                # Update personal best
+                
                 if particle["score"] < particle["best_score"]:
                     particle["best_position"] = particle["position"]
                     particle["best_score"] = particle["score"]
 
-                # Update global best
-                if particle["score"] < self.best_global_score:
-                    self.best_global_position = particle["position"]
-                    self.best_global_score = particle["score"]
+            self.update_global_best()
 
-            # Update velocities and positions
             for particle in self.particles:
                 self.update_velocity(particle)
                 self.update_position(particle)
 
-            # Print progress
             print(f"Iteration {iteration+1}/{self.num_iterations} - Best Score: {self.best_global_score}")
 
-        # Return the best solution found after all iterations
         return self.best_global_position
 
     def optimize_and_display(self):
@@ -136,3 +139,20 @@ class ParticleSwarm(LayoutDisplayMixin):
         # Display optimized layout
         self.display_layout(self.optimized_layout, title="Optimized Layout - Particle Swarm")
         return self.optimized_layout
+    
+    def recortes_disponiveis(self, particle):
+       total_area_used = 0
+    
+       for i in range(self.dim):
+        # Obtém a posição do recorte
+        x, y = particle["position"][i]["x"], particle["position"][i]["y"]
+        
+        # Obtém as dimensões do recorte (largura e altura)
+        recorte = self.initial_layout[i]
+        largura, altura = recorte["largura"], recorte["altura"]
+
+        # Verifica se o recorte cabe na chapa
+        if 0 <= x + largura <= self.sheet_width and 0 <= y + altura <= self.sheet_height:
+            total_area_used += largura * altura
+
+       return total_area_used
