@@ -1,17 +1,15 @@
 """
-genetic_algorithm.py
+Algoritmo Genético para Colocação 2D utilizando Retângulos Livres (Free Rectangles):
+ - Mantém o tamanho do bounding box fixo (sheet_width x sheet_height).
+ - Não permite redimensionamento das peças.
+ - Suporta apenas uma única chapa (sem multi-chapas).
+ - Peças que não couberem em nenhum retângulo livre, mesmo considerando rotações
+   de 0° ou 90°, serão descartadas e penalizadas.
+ - Rotação permitida: 0°/90° para peças retangulares e diamantes.
+ - Penalização severa para peças descartadas.
 
-Algoritmo Genético com Colocação 2D via Retângulos Livres (Free Rectangles):
- - Não altera o bounding box (permanece sheet_width x sheet_height).
- - Não redimensiona peças.
- - Não usa multi-chapas.
- - Se a peça não couber em nenhum retângulo livre (mesmo girando 0° ou 90°),
-   ela é descartada e penalizada.
- - Rotação 0°/90° para retangulares/diamantes.
- - Penaliza fuertemente as peças não colocadas.
-
-Adaptável a qualquer conjunto de peças (retangulares, diamantes, circulares etc.)
-sem sobreposições e sem cortar imagens.
+O algoritmo é compatível com qualquer conjunto de peças (retangulares, diamantes, circulares etc.),
+desde que não haja sobreposição ou cortes nas imagens.
 """
 
 from common.layout_display import LayoutDisplayMixin
@@ -30,12 +28,12 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         numero_geracoes: int = 100
     ):
         """
-        GA com Retângulos Livres (Free Rectangles) para colocação 2D:
-         - Sem multi-chapas, sem redimensionar peças.
-         - Se não couber em nenhum retângulo livre, descarta a peça (penalidade).
-         - Rotação 0°/90° p/ retangulares/diamantes.
+        Algoritmo Genético baseado em Retângulos Livres (Free Rectangles) para colocação 2D:
+         - Não permite multi-chapas nem redimensionamento das peças.
+         - Peças sem encaixe em retângulos livres serão descartadas e penalizadas.
+         - Rotação disponível: 0° e 90° para peças retangulares e em formato de diamante.
         """
-        print("GA 2D Free-Rectangles - Sem redimensionar, sem multi-chapas, bounding box fixo.")
+        print("Algoritmo Genético 2D Free-Rectangles - Sem redimensionar, sem multi-chapas, bounding box fixo.")
         self.TAM_POP = TAM_POP
         self.recortes_disponiveis = recortes_disponiveis
         self.sheet_width = sheet_width
@@ -49,7 +47,7 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         self.best_fitness: float = float('inf')
         self.optimized_layout = None
 
-        # Parâmetros do GA
+        # Parâmetros do Algoritmo Genético
         self.mutation_rate = 0.1
         self.elitism = True
 
@@ -71,12 +69,13 @@ class GeneticAlgorithm(LayoutDisplayMixin):
     # -------------------------------------------------------------------------
     def decode_layout(self, permutation: List[int]) -> Tuple[List[Dict[str,Any]], int]:
         """
-        Decodifica a permutação em layout usando a abordagem de Retângulos Livres (Free Rectangles).
-        - Inicia com uma lista de retângulos livres contendo apenas (0,0, sheet_width, sheet_height).
-        - Para cada peça, tenta encaixar (com rotação 0°/90°) em algum retângulo livre.
-        - Se couber, coloca a peça e atualiza a lista de retângulos livres (subtrai o espaço ocupado).
-        - Se não couber em nenhum retângulo, a peça é descartada.
-        Retorna (layout, num_descartadas).
+        Transforma uma permutação de peças em um layout utilizando a técnica de Retângulos Livres (Free Rectangles).
+         - A lista inicial de retângulos livres contém apenas a chapa completa (0,0, sheet_width, sheet_height).
+         - Cada peça é testada em diferentes rotações (0°/90°) para encaixe em um retângulo livre disponível.
+         - Caso a peça tenha um encaixe válido, ela é posicionada e os retângulos livres são atualizados.
+         - Caso não haja encaixe possível, a peça é descartada e penalizada.
+        
+        Retorna: (layout gerado, quantidade de peças descartadas).
         """
         layout_result: List[Dict[str, Any]] = []
         free_rects: List[Tuple[float,float,float,float]] = []
@@ -144,7 +143,8 @@ class GeneticAlgorithm(LayoutDisplayMixin):
         return (layout_result, discarded)
 
     def get_dims(self, rec: Dict[str,Any], rot: int) -> Tuple[float,float]:
-        """Retorna (w,h) considerando o tipo da peça e a rotação 0° ou 90°."""
+        """Calcula e retorna as dimensões (largura, altura) da peça considerando seu tipo e a rotação aplicada (0° ou 90°)."""
+
         tipo = rec["tipo"]
         if tipo == "circular":
             d = 2*rec["r"]
@@ -162,10 +162,11 @@ class GeneticAlgorithm(LayoutDisplayMixin):
     # -------------------------------------------------------------------------
     def evaluate_individual(self, permutation: List[int]) -> float:
         """
-        Decodifica via free rectangles e retorna um fitness:
-         - soma do bounding box final
-         - penalidade p/ peças descartadas
+        Avalia um indivíduo decodificando sua disposição no layout via Retângulos Livres (Free Rectangles).
+        - O fitness é calculado com base na área final ocupada pelo bounding box resultante.
+        - Peças descartadas recebem uma penalização significativa.
         """
+
         layout, discarded = self.decode_layout(permutation)
 
         # Calcula bounding box do layout
