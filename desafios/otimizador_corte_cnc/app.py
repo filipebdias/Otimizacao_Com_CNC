@@ -24,15 +24,26 @@ def main():
         {"tipo": "circular", "r": 16, "x": 158, "y": 2}
     ]
 
-    # Instantiate and run Particle Swarm Optimization.
-    ps_optimizer = ParticleSwarm(num_particles=20, num_iterations=100, dim=len(recortes_disponiveis),
-                                 sheet_width=sheet_width, sheet_height=sheet_height, recortes_disponiveis=recortes_disponiveis)
-    print("Running Particle Swarm Optimization...")
-    ps_optimized_layout = ps_optimizer.optimize_and_display()
+    # # Instantiate and run Particle Swarm Optimization.
+    # ps_optimizer = ParticleSwarm(num_particles=20, num_iterations=100, dim=len(recortes_disponiveis),
+    #                              sheet_width=sheet_width, sheet_height=sheet_height, recortes_disponiveis=recortes_disponiveis)
+    # print("Running Particle Swarm Optimization...")
+    # ps_optimized_layout = ps_optimizer.optimize_and_display()
 
-    # Display optimized layout
-    print("Particle Swarm Optimized Layout:")
-    for item in ps_optimized_layout or []:
+    # # Display optimized layout
+    # print("Particle Swarm Optimized Layout:")
+    # for item in ps_optimized_layout or []:
+    #     print(item)
+        
+        
+          # Instantiate and run Genetic Algorithm.
+    ga_optimizer = GeneticAlgorithm(TAM_POP=50, recortes_disponiveis=recortes_disponiveis,
+                                    sheet_width=sheet_width, sheet_height=sheet_height, numero_geracoes=100)
+    print("Running Genetic Algorithm...")
+    ga_optimized_layout = ga_optimizer.optimize_and_display()
+    
+    print("Genetic Algorithm Optimized Layout:")
+    for item in ga_optimized_layout or []:
         print(item)
 
 if __name__ == "__main__":
